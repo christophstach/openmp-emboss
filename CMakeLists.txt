@@ -15,6 +15,6 @@ add_executable(openmp_emboss main.cpp)
 
 target_link_libraries(
         openmp_emboss
-        OpenMP::OpenMP_CXX
+        PUBLIC OpenMP::OpenMP_CXX
         ${OpenCV_LIBS}
 )
