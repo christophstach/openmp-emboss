@@ -73,9 +73,9 @@ cv::Mat applyHSV(cv::Mat srcImage) {
                 v = cMax;
 
                 cv::Vec3b destPixel = cv::Vec3b(
-                        int(h / 360.0 * 255.0),
-                        int(s * 255.0),
-                        int(v * 255.0)
+                        uchar(h / 360.0 * 255.0),
+                        uchar(s * 255.0),
+                        uchar(v * 255.0)
                 );
 
                 destImage.at<cv::Vec3b>(row, col) = destPixel;
@@ -100,7 +100,7 @@ cv::Mat applyOpenCVGrayscale(const cv::Mat &srcImage) {
 
 cv::Mat applyOpenCVHSV(const cv::Mat &srcImage) {
     cv::Mat destImage;
-    cv::cvtColor(srcImage, destImage, cv::COLOR_BGR2HSV);
+    cv::cvtColor(srcImage, destImage, cv::COLOR_BGR2HSV_FULL);
 
     return destImage;
 }
@@ -157,16 +157,16 @@ int main() {
         imshow("Source Image", srcImage);
         // imshow("Own Grayscale", ownGrayscaleImage);
         // imshow("CV Grayscale", cvGrayscaleImage);
-        // imshow("Difference Grayscale", cvGrayscaleImage - ownGrayscaleImage);
+        // imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
 
         imshow("Own HSV", ownHSVImage);
         imshow("CV HSV", cvHSVImage);
-        imshow("Difference HSV", cvHSVImage - ownHSVImage);
+        imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
 
 
         // imshow("Own Emboss", ownEmbossImage);
         // imshow("CV Emboss", cvEmbossImage);
-        // imshow("Difference Grayscale", cvEmbossImage - ownEmbossImage);
+        // imshow("Difference Grayscale", abs(cvEmbossImage - ownEmbossImage));
     }
 
     cv::waitKey(0);
