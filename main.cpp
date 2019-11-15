@@ -13,7 +13,7 @@ cv::Mat applyGrayscale(cv::Mat srcImage) {
 
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel
+    #pragma omp parallel default(none) shared(srcImage, destImage)
     {
         for (int row = omp_get_thread_num(); row < srcImage.rows; row += omp_get_num_threads()) {
             for (int col = 0; col < srcImage.cols; col++) {
@@ -42,7 +42,7 @@ cv::Mat applyHSV(cv::Mat srcImage) {
 
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel
+    #pragma omp parallel default(none) shared(srcImage, destImage)
     {
         for (int row = omp_get_thread_num(); row < srcImage.rows; row += omp_get_num_threads()) {
             for (int col = 0; col < srcImage.cols; col++) {
@@ -91,12 +91,31 @@ cv::Mat applyEmboss(cv::Mat srcImage) {
 
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel
+    #pragma omp parallel default(none) shared(srcImage, destImage)
     {
         for (int row = omp_get_thread_num(); row < srcImage.rows; row += omp_get_num_threads()) {
             for (int col = 0; col < srcImage.cols; col++) {
+                int diffR, diffG, diffB, diff, gray;
                 auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
-                auto upperLeftPixel = srcImage < cv::Vec3b(row - 1, col - 1);
+
+                if (row == 0 || col == 0) {
+                    diffR = srcPixel[2];
+                    diffG = srcPixel[1];
+                    diffB = srcPixel[0];
+                } else {
+                    auto upperLeftPixel = srcImage.at<cv::Vec3b>(row - 1, col - 1);
+                    diffR = std::abs(srcPixel[2] - upperLeftPixel[2]);
+                    diffG = std::abs(srcPixel[1] - upperLeftPixel[1]);
+                    diffB = std::abs(srcPixel[0] - upperLeftPixel[0]);
+                }
+
+                diff = std::max(diffR, std::max(diffG, diffB));
+
+                gray = 128 + diff;
+                gray = gray > 255 ? 255 : gray;
+                gray = gray < 0 ? 0 : gray;
+
+                destImage.at<uchar>(row, col) = gray;
             }
         }
     }
@@ -147,8 +166,6 @@ void measureTime(F func, int iterations = 20) {
 }
 
 int main() {
-
-
     auto imagePath = "resources/images/dice.png";
     cv::Mat srcImage = cv::imread(imagePath, cv::IMREAD_COLOR);
     cv::Mat ownGrayscaleImage;
@@ -178,19 +195,19 @@ int main() {
         imshow("Source Image", srcImage);
         // imshow("Own Grayscale", ownGrayscaleImage);
         // imshow("CV Grayscale", cvGrayscaleImage);
-        // imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
+        //imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
 
         cv::Mat diff = abs(cvHSVImage - ownHSVImage);
-        auto error  = cv::sum(diff) / (srcImage.rows * srcImage.cols);
+        auto error = cv::sum(diff) / (srcImage.rows * srcImage.cols);
         std::cout << "Error: " << error << "\n";
 
-         imshow("Own HSV", ownHSVImage);
-         imshow("CV HSV", cvHSVImage);
-         imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
+        //imshow("Own HSV", ownHSVImage);
+        //imshow("CV HSV", cvHSVImage);
+        //imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
 
 
-        //imshow("Own Emboss", ownEmbossImage);
-        // imshow("CV Emboss", cvEmbossImage);
+        imshow("Own Emboss", ownEmbossImage);
+        //imshow("CV Emboss", cvEmbossImage);
         // imshow("Difference Grayscale", abs(cvEmbossImage - ownEmbossImage));
     }
 
