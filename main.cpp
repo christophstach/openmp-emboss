@@ -3,8 +3,9 @@
 #include <opencv2/opencv.hpp>
 
 /*
- * Laufzeit-Messungen für 2 4 6 8 10 12 14 16 Threads --> Daraus Bar-Chart machen
- * für OpenCV sowie für eigenen Algorithmus
+ * TODO: Laufzeit-Messungen für 2 4 6 8 10 12 14 16 Threads --> Daraus Bar-Chart machen für OpenCV sowie für eigenen Algorithmus
+ * TODO: Bei Emboss könnte der Alpha-Channel beachtet werden.
+ *
  */
 
 cv::Mat applyGrayscale(cv::Mat srcImage) {
@@ -195,19 +196,19 @@ int main() {
         imshow("Source Image", srcImage);
         // imshow("Own Grayscale", ownGrayscaleImage);
         // imshow("CV Grayscale", cvGrayscaleImage);
-        //imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
+        // imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
 
         cv::Mat diff = abs(cvHSVImage - ownHSVImage);
         auto error = cv::sum(diff) / (srcImage.rows * srcImage.cols);
         std::cout << "Error: " << error << "\n";
 
-        //imshow("Own HSV", ownHSVImage);
-        //imshow("CV HSV", cvHSVImage);
-        //imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
+        // imshow("Own HSV", ownHSVImage);
+        // imshow("CV HSV", cvHSVImage);
+        // imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
 
 
         imshow("Own Emboss", ownEmbossImage);
-        //imshow("CV Emboss", cvEmbossImage);
+        // imshow("CV Emboss", cvEmbossImage);
         // imshow("Difference Grayscale", abs(cvEmbossImage - ownEmbossImage));
     }
 
