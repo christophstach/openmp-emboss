@@ -331,20 +331,6 @@ cv::Mat applyOpenCvHsv(const cv::Mat &srcImage) {
     return destImage;
 }
 
-cv::Mat applyOpenCvEmboss(const cv::Mat &srcImage) {
-    float embossKernel[3][3] = {
-            {0.0, -1.0, 0.0},
-            {0.0, 0.0,  0.0},
-            {0.0, 1.0,  0.0}
-    };
-
-    cv::Mat destImage;
-    cv::Mat kernel = cv::Mat(3, 3, CV_32F, &embossKernel);
-    cv::filter2D(srcImage, destImage, -1, kernel, cv::Point(-1, -1));
-
-    return destImage + 128.0;
-}
-
 template<typename F>
 void measureTime(char *title, F func, int iterations = 20, int maxThreadCount = 16) {
     auto *diffs = new double[maxThreadCount];
@@ -380,7 +366,6 @@ int main() {
     cv::Mat cvHSVImage;
 
     cv::Mat ownEmbossImage;
-    cv::Mat cvEmbossImage;
 
     if (!srcImage.data) {
         printf("No srcImage data\n");
@@ -404,33 +389,38 @@ int main() {
         /* ---------- HSV ---------- */
 
         measureTime((char *) "Own HSV (Outer)", [&](int numThreads) {
-            ownGrayscaleImage = applyHsvOuter(srcImage, numThreads);
+            ownHSVImage = applyHsvOuter(srcImage, numThreads);
         });
         measureTime((char *) "Own HSV (Inner)", [&](int numThreads) {
-            ownGrayscaleImage = applyHsvInner(srcImage, numThreads);
+            ownHSVImage = applyHsvInner(srcImage, numThreads);
         });
         measureTime((char *) "Own HSV (Both)", [&](int numThreads) {
-            ownGrayscaleImage = applyHsvBoth(srcImage, numThreads);
+            ownHSVImage = applyHsvBoth(srcImage, numThreads);
         });
         measureTime((char *) "OpenCV HSV", [&](int numThreads) {
-            cvGrayscaleImage = applyOpenCvHsv(srcImage);
+            cvHSVImage = applyOpenCvHsv(srcImage);
         });
 
 
         /* ---------- Emboss ---------- */
 
         measureTime((char *) "Own Emboss (Outer)", [&](int numThreads) {
-            ownGrayscaleImage = applyEmbossOuter(srcImage, numThreads);
+            ownEmbossImage = applyEmbossOuter(srcImage, numThreads);
         });
         measureTime((char *) "Own Emboss (Inner)", [&](int numThreads) {
-            ownGrayscaleImage = applyEmbossInner(srcImage, numThreads);
+            ownEmbossImage = applyEmbossInner(srcImage, numThreads);
         });
         measureTime((char *) "Own Emboss (Both)", [&](int numThreads) {
-            ownGrayscaleImage = applyEmbossBoth(srcImage, numThreads);
+            ownEmbossImage = applyEmbossBoth(srcImage, numThreads);
         });
-        measureTime((char *) "OpenCV Emboss", [&](int numThreads) {
-            cvGrayscaleImage = applyOpenCvEmboss(srcImage);
-        });
+
+        cv::imwrite("resources/images/results/own-grayscale.png", ownGrayscaleImage);
+        cv::imwrite("resources/images/results/cv-grayscale.png", cvGrayscaleImage);
+
+        cv::imwrite("resources/images/results/own-hsv.png", ownHSVImage);
+        cv::imwrite("resources/images/results/cv-hsv.png", cvHSVImage);
+
+        cv::imwrite("resources/images/results/own-emboss.png", ownEmbossImage);
 
         // imshow("Source Image", srcImage);
         // imshow("Own Grayscale", ownGrayscaleImage);
@@ -447,8 +437,6 @@ int main() {
 
 
         // imshow("Own Emboss", ownEmbossImage);
-        // imshow("CV Emboss", cvEmbossImage);
-        // imshow("Difference Grayscale", abs(cvEmbossImage - ownEmbossImage));
     }
 
     cv::waitKey(0);
