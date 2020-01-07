@@ -59,9 +59,8 @@ cv::Mat applyGrayscaleBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs(
     auto destImage = cv::Mat(srcImage.rows, srcImage.cols, CV_8UC1);
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel for default(none) shared(srcImage, destImage)
+    #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
-        #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
             auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
 
@@ -173,9 +172,8 @@ cv::Mat applyHsvBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC3);
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel for default(none) shared(srcImage, destImage)
+    #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
-        #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
             auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
 
@@ -287,9 +285,8 @@ cv::Mat applyEmbossBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) 
     cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC1);
     omp_set_num_threads(numThreads);
 
-    #pragma omp parallel for default(none) shared(srcImage, destImage)
+    #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
-        #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
             int diffR, diffG, diffB, diff, gray;
             auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
@@ -422,8 +419,8 @@ int main() {
 
         cv::imwrite("resources/images/results/own-emboss.png", ownEmbossImage);
 
-        // imshow("Source Image", srcImage);
-        // imshow("Own Grayscale", ownGrayscaleImage);
+        imshow("Source Image", srcImage);
+        imshow("Own Grayscale", ownGrayscaleImage);
         // imshow("CV Grayscale", cvGrayscaleImage);
         // imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
 
@@ -431,12 +428,12 @@ int main() {
         // auto error = cv::sum(diff) / (srcImage.rows * srcImage.cols);
         // std::cout << "Error: " << error << "\n";
 
-        // imshow("Own HSV", ownHSVImage);
+        imshow("Own HSV", ownHSVImage);
         // imshow("CV HSV", cvHSVImage);
         // imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
 
 
-        // imshow("Own Emboss", ownEmbossImage);
+        imshow("Own Emboss", ownEmbossImage);
     }
 
     cv::waitKey(0);
