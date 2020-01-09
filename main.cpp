@@ -306,6 +306,7 @@ cv::Mat applyEmbossCollapse(cv::Mat srcImage, int numThreads = omp_get_num_procs
             int diffR, diffG, diffB, diff, gray;
             auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
+
             if (row == 0 || col == 0) {
                 diffR = srcPixel[2];
                 diffG = srcPixel[1];
@@ -404,6 +405,13 @@ int main(int argc, char *argv[]) {
 
         cv::Mat myEmbossImage;
 
+        if(srcImage.channels() == 3) {
+            cv::cvtColor(srcImage, srcImage, cv::COLOR_BGR2BGRA);
+        } else if(srcImage.channels() == 1) {
+            cv::cvtColor(srcImage, srcImage, cv::COLOR_GRAY2BGRA);
+        }
+
+        std::cout << srcImage.channels();
 
         if (!srcImage.data) {
             printf("No srcImage data\n");
