@@ -2,6 +2,7 @@
 #include <omp.h>
 #include <opencv2/opencv.hpp>
 #include <chrono>
+#include <cxxopts.hpp>
 
 /*
  * TODO: Laufzeit-Messungen für 2 4 6 8 10 12 14 16 Threads --> Daraus Bar-Chart machen für OpenCV sowie für eigenen Algorithmus
@@ -16,7 +17,7 @@ cv::Mat applyGrayscaleOuter(cv::Mat srcImage, int numThreads = omp_get_num_procs
     #pragma omp parallel for default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             uchar r = srcPixel[2];
             uchar g = srcPixel[1];
@@ -39,7 +40,7 @@ cv::Mat applyGrayscaleInner(cv::Mat srcImage, int numThreads = omp_get_num_procs
     for (int row = 0; row < srcImage.rows; row++) {
         #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             uchar r = srcPixel[2];
             uchar g = srcPixel[1];
@@ -55,14 +56,14 @@ cv::Mat applyGrayscaleInner(cv::Mat srcImage, int numThreads = omp_get_num_procs
     return destImage;
 }
 
-cv::Mat applyGrayscaleBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
+cv::Mat applyGrayscaleCollapse(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     auto destImage = cv::Mat(srcImage.rows, srcImage.cols, CV_8UC1);
     omp_set_num_threads(numThreads);
 
     #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             uchar r = srcPixel[2];
             uchar g = srcPixel[1];
@@ -85,7 +86,7 @@ cv::Mat applyHsvOuter(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     #pragma omp parallel for default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             double r = srcPixel[2] / 255.0;
             double g = srcPixel[1] / 255.0;
@@ -130,7 +131,7 @@ cv::Mat applyHsvInner(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     for (int row = 0; row < srcImage.rows; row++) {
         #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             double r = srcPixel[2] / 255.0;
             double g = srcPixel[1] / 255.0;
@@ -168,14 +169,14 @@ cv::Mat applyHsvInner(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     return destImage;
 }
 
-cv::Mat applyHsvBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
+cv::Mat applyHsvCollapse(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
     cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC3);
     omp_set_num_threads(numThreads);
 
     #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             double r = srcPixel[2] / 255.0;
             double g = srcPixel[1] / 255.0;
@@ -214,21 +215,21 @@ cv::Mat applyHsvBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
 }
 
 cv::Mat applyEmbossOuter(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
-    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC1);
+    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC4);
     omp_set_num_threads(numThreads);
 
     #pragma omp parallel for default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
             int diffR, diffG, diffB, diff, gray;
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             if (row == 0 || col == 0) {
                 diffR = srcPixel[2];
                 diffG = srcPixel[1];
                 diffB = srcPixel[0];
             } else {
-                auto upperLeftPixel = srcImage.at<cv::Vec3b>(row - 1, col - 1);
+                auto upperLeftPixel = srcImage.at<cv::Vec4b>(row - 1, col - 1);
                 diffR = std::abs(srcPixel[2] - upperLeftPixel[2]);
                 diffG = std::abs(srcPixel[1] - upperLeftPixel[1]);
                 diffB = std::abs(srcPixel[0] - upperLeftPixel[0]);
@@ -240,7 +241,14 @@ cv::Mat applyEmbossOuter(cv::Mat srcImage, int numThreads = omp_get_num_procs())
             gray = gray > 255 ? 255 : gray;
             gray = gray < 0 ? 0 : gray;
 
-            destImage.at<uchar>(row, col) = gray;
+            cv::Vec4b destPixel = cv::Vec4b(
+                    uchar(gray),
+                    uchar(gray),
+                    uchar(gray),
+                    srcPixel[3]
+            );
+
+            destImage.at<cv::Vec4b>(row, col) = destPixel;
         }
     }
 
@@ -248,21 +256,21 @@ cv::Mat applyEmbossOuter(cv::Mat srcImage, int numThreads = omp_get_num_procs())
 }
 
 cv::Mat applyEmbossInner(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
-    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC1);
+    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC4);
     omp_set_num_threads(numThreads);
 
     for (int row = 0; row < srcImage.rows; row++) {
         #pragma omp parallel for default(none) shared(srcImage, destImage, row)
         for (int col = 0; col < srcImage.cols; col++) {
             int diffR, diffG, diffB, diff, gray;
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             if (row == 0 || col == 0) {
                 diffR = srcPixel[2];
                 diffG = srcPixel[1];
                 diffB = srcPixel[0];
             } else {
-                auto upperLeftPixel = srcImage.at<cv::Vec3b>(row - 1, col - 1);
+                auto upperLeftPixel = srcImage.at<cv::Vec4b>(row - 1, col - 1);
                 diffR = std::abs(srcPixel[2] - upperLeftPixel[2]);
                 diffG = std::abs(srcPixel[1] - upperLeftPixel[1]);
                 diffB = std::abs(srcPixel[0] - upperLeftPixel[0]);
@@ -274,29 +282,36 @@ cv::Mat applyEmbossInner(cv::Mat srcImage, int numThreads = omp_get_num_procs())
             gray = gray > 255 ? 255 : gray;
             gray = gray < 0 ? 0 : gray;
 
-            destImage.at<uchar>(row, col) = gray;
+            cv::Vec4b destPixel = cv::Vec4b(
+                    uchar(gray),
+                    uchar(gray),
+                    uchar(gray),
+                    srcPixel[3]
+            );
+
+            destImage.at<cv::Vec4b>(row, col) = destPixel;
         }
     }
 
     return destImage;
 }
 
-cv::Mat applyEmbossBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
-    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC1);
+cv::Mat applyEmbossCollapse(cv::Mat srcImage, int numThreads = omp_get_num_procs()) {
+    cv::Mat destImage(srcImage.rows, srcImage.cols, CV_8UC4);
     omp_set_num_threads(numThreads);
 
     #pragma omp parallel for collapse(2) default(none) shared(srcImage, destImage)
     for (int row = 0; row < srcImage.rows; row++) {
         for (int col = 0; col < srcImage.cols; col++) {
             int diffR, diffG, diffB, diff, gray;
-            auto srcPixel = srcImage.at<cv::Vec3b>(row, col);
+            auto srcPixel = srcImage.at<cv::Vec4b>(row, col);
 
             if (row == 0 || col == 0) {
                 diffR = srcPixel[2];
                 diffG = srcPixel[1];
                 diffB = srcPixel[0];
             } else {
-                auto upperLeftPixel = srcImage.at<cv::Vec3b>(row - 1, col - 1);
+                auto upperLeftPixel = srcImage.at<cv::Vec4b>(row - 1, col - 1);
                 diffR = std::abs(srcPixel[2] - upperLeftPixel[2]);
                 diffG = std::abs(srcPixel[1] - upperLeftPixel[1]);
                 diffB = std::abs(srcPixel[0] - upperLeftPixel[0]);
@@ -308,7 +323,14 @@ cv::Mat applyEmbossBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) 
             gray = gray > 255 ? 255 : gray;
             gray = gray < 0 ? 0 : gray;
 
-            destImage.at<uchar>(row, col) = gray;
+            cv::Vec4b destPixel = cv::Vec4b(
+                    uchar(gray),
+                    uchar(gray),
+                    uchar(gray),
+                    srcPixel[3]
+            );
+
+            destImage.at<cv::Vec4b>(row, col) = destPixel;
         }
     }
 
@@ -317,7 +339,7 @@ cv::Mat applyEmbossBoth(cv::Mat srcImage, int numThreads = omp_get_num_procs()) 
 
 cv::Mat applyOpenCvGrayscale(const cv::Mat &srcImage) {
     cv::Mat destImage;
-    cv::cvtColor(srcImage, destImage, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(srcImage, destImage, cv::COLOR_BGRA2GRAY);
 
     return destImage;
 }
@@ -329,7 +351,7 @@ cv::Mat applyOpenCvHsv(const cv::Mat &srcImage) {
 }
 
 template<typename F>
-void measureTime(char *title, F func, int iterations = 20, int maxThreadCount = 16) {
+void measureTime(char *title, F func, int iterations = 1, int maxThreadCount = 16) {
     auto *diffs = new double[maxThreadCount];
 
     for (int j = 0; j < 16; j++) {
@@ -353,94 +375,122 @@ void measureTime(char *title, F func, int iterations = 20, int maxThreadCount = 
     std::cout << std::endl << std::endl;
 }
 
-int main() {
-    auto imagePath = "resources/images/dice.png";
-    cv::Mat srcImage = cv::imread(imagePath, cv::IMREAD_COLOR);
-    cv::Mat ownGrayscaleImage;
-    cv::Mat cvGrayscaleImage;
+int main(int argc, char *argv[]) {
+    int iterations = 1;
+    bool showResults = false;
+    auto imagePath = std::string("resources/images/");
+    auto imageName = std::string();
 
-    cv::Mat ownHSVImage;
-    cv::Mat cvHSVImage;
+    cxxopts::Options options("openmp_emboss", "Image conversion with OMP: Grayscale, HSV and Emboss");
+    options.add_options()
+            ("f,file", "Image to convert", cxxopts::value<std::string>(imageName), "image")
+            ("p,path", "Path to the image folder", cxxopts::value<std::string>(imagePath), "path")
+            ("i,iterations", "Iterations for testing", cxxopts::value<int>(iterations), "number")
+            ("r,results", "Show results", cxxopts::value<bool>(showResults));
+    auto results = options.parse(argc, argv);
 
-    cv::Mat ownEmbossImage;
+    if (results.count("file") == 1) {
+        std::cout << "Running algorithm-tests with " << iterations << " iteration(s)" << std::endl;
+        std::cout << "-------------------------------------------------" << std::endl << std::endl << std::endl;
 
-    if (!srcImage.data) {
-        printf("No srcImage data\n");
+        std::string imageFullPath = std::string(imagePath) + std::string(imageName);
 
+        cv::Mat srcImage = cv::imread(imageFullPath, cv::IMREAD_UNCHANGED);
+        cv::Mat myGrayscaleImage;
+        cv::Mat cvGrayscaleImage;
+
+        cv::Mat myHSVImage;
+        cv::Mat cvHSVImage;
+
+        cv::Mat myEmbossImage;
+
+
+        if (!srcImage.data) {
+            printf("No srcImage data\n");
+        } else {
+            /* ---------- Grayscale ---------- */
+
+            measureTime((char *) "My Grayscale (Outer)", [&](int numThreads) {
+                applyGrayscaleOuter(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My Grayscale (Inner)", [&](int numThreads) {
+                applyGrayscaleInner(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My Grayscale (Collapse)", [&](int numThreads) {
+                myGrayscaleImage = applyGrayscaleCollapse(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "OpenCV Grayscale", [&](int numThreads) {
+                cvGrayscaleImage = applyOpenCvGrayscale(srcImage);
+            }, iterations);
+
+            /* ---------- HSV ---------- */
+
+            measureTime((char *) "My HSV (Outer)", [&](int numThreads) {
+                applyHsvOuter(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My HSV (Inner)", [&](int numThreads) {
+                applyHsvInner(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My HSV (Collapse)", [&](int numThreads) {
+                myHSVImage = applyHsvCollapse(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "OpenCV HSV", [&](int numThreads) {
+                cvHSVImage = applyOpenCvHsv(srcImage);
+            }, iterations);
+
+
+            /* ---------- Emboss ---------- */
+
+            measureTime((char *) "My Emboss (Outer)", [&](int numThreads) {
+                applyEmbossOuter(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My Emboss (Inner)", [&](int numThreads) {
+                applyEmbossInner(srcImage, numThreads);
+            }, iterations);
+            measureTime((char *) "My Emboss (Collapse)", [&](int numThreads) {
+                myEmbossImage = applyEmbossCollapse(srcImage, numThreads);
+            }, iterations);
+
+
+            std::cout << "Saving my grayscale" << std::endl;
+            cv::imwrite("resources/images/results/grayscale-my." + imageName, myGrayscaleImage);
+            std::cout << "Saving cv grayscale" << std::endl;
+            cv::imwrite("resources/images/results/grayscale-cv." + imageName, cvGrayscaleImage);
+
+            std::cout << "Saving my hsv" << std::endl;
+            cv::imwrite("resources/images/results/hsv-my." + imageName, myHSVImage);
+            std::cout << "Saving cv hsv" << std::endl;
+            cv::imwrite("resources/images/results/hsv-cv." + imageName, cvHSVImage);
+
+            std::cout << "Saving my emboss" << std::endl;
+            cv::imwrite("resources/images/results/emboss-my." + imageName, myEmbossImage);
+
+
+            if (showResults) {
+                imshow("Source Image", srcImage);
+                imshow("My Grayscale", myGrayscaleImage);
+                imshow("CV Grayscale", cvGrayscaleImage);
+                // imshow("Difference Grayscale", abs(cvGrayscaleImage - myGrayscaleImage));
+
+                // cv::Mat diff = abs(cvHSVImage - myHSVImage);
+                // auto error = cv::sum(diff) / (srcImage.rows * srcImage.cols);
+                // std::cout << "Error: " << error << "\n";
+
+                imshow("My HSV", myHSVImage);
+                imshow("CV HSV", cvHSVImage);
+                // imshow("Difference HSV", abs(cvHSVImage - myHSVImage));
+
+                imshow("My Emboss", myEmbossImage);
+            }
+        }
+
+        cv::waitKey(0);
+
+
+        return 0;
     } else {
-        /* ---------- Grayscale ---------- */
-
-        measureTime((char *) "Own Grayscale (Outer)", [&](int numThreads) {
-            ownGrayscaleImage = applyGrayscaleOuter(srcImage, numThreads);
-        });
-        measureTime((char *) "Own Grayscale (Inner)", [&](int numThreads) {
-            ownGrayscaleImage = applyGrayscaleInner(srcImage, numThreads);
-        });
-        measureTime((char *) "Own Grayscale (Both)", [&](int numThreads) {
-            ownGrayscaleImage = applyGrayscaleBoth(srcImage, numThreads);
-        });
-        measureTime((char *) "OpenCV Grayscale", [&](int numThreads) {
-            cvGrayscaleImage = applyOpenCvGrayscale(srcImage);
-        });
-
-        /* ---------- HSV ---------- */
-
-        measureTime((char *) "Own HSV (Outer)", [&](int numThreads) {
-            ownHSVImage = applyHsvOuter(srcImage, numThreads);
-        });
-        measureTime((char *) "Own HSV (Inner)", [&](int numThreads) {
-            ownHSVImage = applyHsvInner(srcImage, numThreads);
-        });
-        measureTime((char *) "Own HSV (Both)", [&](int numThreads) {
-            ownHSVImage = applyHsvBoth(srcImage, numThreads);
-        });
-        measureTime((char *) "OpenCV HSV", [&](int numThreads) {
-            cvHSVImage = applyOpenCvHsv(srcImage);
-        });
-
-
-        /* ---------- Emboss ---------- */
-
-        measureTime((char *) "Own Emboss (Outer)", [&](int numThreads) {
-            ownEmbossImage = applyEmbossOuter(srcImage, numThreads);
-        });
-        measureTime((char *) "Own Emboss (Inner)", [&](int numThreads) {
-            ownEmbossImage = applyEmbossInner(srcImage, numThreads);
-        });
-        measureTime((char *) "Own Emboss (Both)", [&](int numThreads) {
-            ownEmbossImage = applyEmbossBoth(srcImage, numThreads);
-        });
-
-        cv::imwrite("resources/images/results/own-grayscale.png", ownGrayscaleImage);
-        cv::imwrite("resources/images/results/cv-grayscale.png", cvGrayscaleImage);
-
-        cv::imwrite("resources/images/results/own-hsv.png", ownHSVImage);
-        cv::imwrite("resources/images/results/cv-hsv.png", cvHSVImage);
-
-        cv::imwrite("resources/images/results/own-emboss.png", ownEmbossImage);
-
-        imshow("Source Image", srcImage);
-        imshow("Own Grayscale", ownGrayscaleImage);
-        // imshow("CV Grayscale", cvGrayscaleImage);
-        // imshow("Difference Grayscale", abs(cvGrayscaleImage - ownGrayscaleImage));
-
-        // cv::Mat diff = abs(cvHSVImage - ownHSVImage);
-        // auto error = cv::sum(diff) / (srcImage.rows * srcImage.cols);
-        // std::cout << "Error: " << error << "\n";
-
-        imshow("Own HSV", ownHSVImage);
-        // imshow("CV HSV", cvHSVImage);
-        // imshow("Difference HSV", abs(cvHSVImage - ownHSVImage));
-
-
-        imshow("Own Emboss", ownEmbossImage);
+        std::cout << options.help() << std::endl;
     }
-
-    cv::waitKey(0);
-
-
-    return 0;
-
 }
 
 
