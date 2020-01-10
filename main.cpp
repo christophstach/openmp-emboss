@@ -410,9 +410,7 @@ int main(int argc, char *argv[]) {
         } else if(srcImage.channels() == 1) {
             cv::cvtColor(srcImage, srcImage, cv::COLOR_GRAY2BGRA);
         }
-
-        std::cout << srcImage.channels();
-
+        
         if (!srcImage.data) {
             printf("No srcImage data\n");
         } else {
