@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 project(openmp_emboss)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM.cmake")
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/CMakeFiles/CPM.cmake")
 set(CPM_VERSION 0.15.1)
 
 if(NOT EXISTS ${CPM_DOWNLOAD_LOCATION})
